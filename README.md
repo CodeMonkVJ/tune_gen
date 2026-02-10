@@ -59,6 +59,32 @@ http://localhost:8000
 3. Click **Take me to the Tune Playground**.
 4. Press **Play** (top-right transport controls).
 
+## Run with Docker
+
+Build the image:
+
+```bash
+docker build -t tune_gen:latest .
+```
+
+Run the container:
+
+```bash
+docker run --rm -p 8003:80 --name tune_gen_web tune_gen:latest
+```
+
+Open:
+
+```text
+http://localhost:8080
+```
+
+Stop container:
+
+```bash
+docker stop tune_gen_web
+```
+
 ## Controls Overview
 
 ### Core Sound
