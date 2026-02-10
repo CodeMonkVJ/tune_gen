@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tune_gen</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="background-glow"></div>
+    <main class="app">
+      <section id="landing" class="card active">
+        <p class="eyebrow">tune_gen</p>
+        <h1>Tunes for Busy Mules</h1>
+        <p class="subtitle">
+          Focus-friendly background music generated locally in your browser.
+        </p>
+        <p class="privacy-note">
+          No login, no signup, no data collection. Everything runs on your device.
+        </p>
+        <button id="enter-playground-btn" class="primary-btn">
+          Take me to the Tune Playground
+        </button>
+      </section>
+
+      <section id="loading" class="card hidden">
+        <p class="eyebrow">Loading</p>
+        <h2>Warming up instruments...</h2>
+        <div class="loading-bar">
+          <span id="loading-progress"></span>
+        </div>
+      </section>
+
+      <section id="playground" class="card hidden">
+        <header class="playground-header">
+          <div>
+            <p class="eyebrow">Tune Playground</p>
+          </div>
+          <div class="status-pill" id="status-pill">stopped</div>
+        </header>
+
+        <div class="controls-grid primary-controls">
+          <label class="control">
+            <span>Key</span>
+            <select id="key">
+              <option value="0">C</option>
+              <option value="1">C# / Db</option>
+              <option value="2">D</option>
+              <option value="3">D# / Eb</option>
+              <option value="4">E</option>
+              <option value="5">F</option>
+              <option value="6">F# / Gb</option>
+              <option value="7">G</option>
+              <option value="8">G# / Ab</option>
+              <option value="9">A</option>
+              <option value="10">A# / Bb</option>
+              <option value="11">B</option>
+            </select>
+          </label>
+        </div>
+
+        <p class="eyebrow control-title">Core Sound</p>
+
+        <div class="controls-grid">
+          <label class="control">
+            <span>Energy Curve</span>
+            <select id="energy-curve">
+              <option value="steady">Steady</option>
+              <option value="build">Slow Build</option>
+              <option value="wave">Wave Motion</option>
+              <option value="drop">Drop Pulse</option>
+            </select>
+          </label>
+
+          <label class="control">
+            <span>Voicing Density</span>
+            <input id="harmonic-density" type="range" min="1" max="10" value="5" />
+            <output id="harmonic-density-value">5</output>
+          </label>
+
+          <label class="control">
+            <span>Chord Color</span>
+            <input id="chord-complexity" type="range" min="1" max="10" value="4" />
+            <output id="chord-complexity-value">4</output>
+          </label>
+
+          <label class="control">
+            <span>Groove</span>
+            <input id="groove" type="range" min="1" max="10" value="6" />
+            <output id="groove-value">6</output>
+          </label>
+
+          <label class="control">
+            <span>Motif Development</span>
+            <input id="motif-repetition" type="range" min="1" max="10" value="6" />
+            <output id="motif-repetition-value">6</output>
+          </label>
+
+          <label class="control">
+            <span>Rhythm Density</span>
+            <input id="rhythm-density" type="range" min="1" max="10" value="6" />
+            <output id="rhythm-density-value">6</output>
+          </label>
+
+          <label class="control">
+            <span>Timbre Brightness</span>
+            <input id="brightness" type="range" min="1" max="10" value="5" />
+            <output id="brightness-value">5</output>
+          </label>
+
+          <label class="control">
+            <span>Humanization</span>
+            <input id="humanization" type="range" min="1" max="10" value="5" />
+            <output id="humanization-value">5</output>
+          </label>
+
+          <label class="control">
+            <span>Pattern Shift (minutes)</span>
+            <input id="shift-minutes" type="range" min="1" max="10" value="2" />
+            <output id="shift-minutes-value">2</output>
+          </label>
+        </div>
+
+        <p class="eyebrow control-title">Instrumental Theory</p>
+
+        <div class="controls-grid">
+          <label class="control">
+            <span>Scale Mode</span>
+            <select id="scale-mode">
+              <option value="auto">Auto (Major)</option>
+              <option value="major">Major</option>
+              <option value="minor">Natural Minor</option>
+              <option value="dorian">Dorian</option>
+              <option value="mixolydian">Mixolydian</option>
+            </select>
+          </label>
+
+          <label class="control">
+            <span>Melody Instrument</span>
+            <select id="melody-instrument">
+              <option value="grand-piano">Grand Piano</option>
+              <option value="nylon-guitar">Nylon Guitar</option>
+              <option value="warm-strings">Warm Strings</option>
+              <option value="woodwind">Woodwind</option>
+            </select>
+          </label>
+
+          <label class="control">
+            <span>Chord Instrument</span>
+            <select id="chord-instrument">
+              <option value="warm-strings">Warm Strings</option>
+              <option value="organ">Organ</option>
+            </select>
+          </label>
+
+          <label class="control">
+            <span>Melody Tone</span>
+            <input id="melody-tone" type="range" min="1" max="10" value="6" />
+            <output id="melody-tone-value">6</output>
+          </label>
+
+          <label class="control">
+            <span>Harmonic Rhythm</span>
+            <select id="harmonic-rhythm">
+              <option value="1">Change every bar</option>
+              <option value="2" selected>Change every 2 bars</option>
+              <option value="4">Slow (4 bars)</option>
+            </select>
+          </label>
+
+          <label class="control">
+            <span>Cadence Tension</span>
+            <input id="cadence-tension" type="range" min="1" max="10" value="5" />
+            <output id="cadence-tension-value">5</output>
+          </label>
+
+          <label class="control">
+            <span>Voice Leading</span>
+            <input id="voice-leading" type="range" min="1" max="10" value="7" />
+            <output id="voice-leading-value">7</output>
+          </label>
+
+          <label class="control">
+            <span>Chord-Tone Gravity</span>
+            <input id="chord-tone-gravity" type="range" min="1" max="10" value="7" />
+            <output id="chord-tone-gravity-value">7</output>
+          </label>
+
+          <label class="control">
+            <span>Diatonic Strictness</span>
+            <input id="diatonic-strictness" type="range" min="1" max="10" value="8" />
+            <output id="diatonic-strictness-value">8</output>
+          </label>
+
+          <div class="control theory-random-control">
+            <span>Random Theory Mode</span>
+            <label class="melody-custom-toggle">
+              <input id="random-theory-mode" type="checkbox" checked />
+              Auto-change Instrumental Theory knobs each shift
+            </label>
+          </div>
+        </div>
+
+        <p class="eyebrow control-title">Section Levels</p>
+        <p class="section-note">
+          Keep verse lower, chorus higher, and bridge contrasting to hear form and arrangement changes clearly.
+        </p>
+
+        <div class="controls-grid">
+          <label class="control">
+            <span>Verse Melody</span>
+            <input id="verse-melody-level" type="range" min="1" max="10" value="5" />
+            <output id="verse-melody-level-value">5</output>
+          </label>
+
+          <label class="control">
+            <span>Chorus Melody</span>
+            <input id="chorus-melody-level" type="range" min="1" max="10" value="8" />
+            <output id="chorus-melody-level-value">8</output>
+          </label>
+
+          <label class="control">
+            <span>Bridge Melody</span>
+            <input id="bridge-melody-level" type="range" min="1" max="10" value="6" />
+            <output id="bridge-melody-level-value">6</output>
+          </label>
+
+          <label class="control">
+            <span>Verse Harmony</span>
+            <input id="verse-harmony-level" type="range" min="1" max="10" value="5" />
+            <output id="verse-harmony-level-value">5</output>
+          </label>
+
+          <label class="control">
+            <span>Chorus Harmony</span>
+            <input id="chorus-harmony-level" type="range" min="1" max="10" value="8" />
+            <output id="chorus-harmony-level-value">8</output>
+          </label>
+
+          <label class="control">
+            <span>Bridge Harmony</span>
+            <input id="bridge-harmony-level" type="range" min="1" max="10" value="7" />
+            <output id="bridge-harmony-level-value">7</output>
+          </label>
+
+          <label class="control">
+            <span>Verse Rhythm</span>
+            <input id="verse-rhythm-level" type="range" min="1" max="10" value="4" />
+            <output id="verse-rhythm-level-value">4</output>
+          </label>
+
+          <label class="control">
+            <span>Chorus Rhythm</span>
+            <input id="chorus-rhythm-level" type="range" min="1" max="10" value="8" />
+            <output id="chorus-rhythm-level-value">8</output>
+          </label>
+
+          <label class="control">
+            <span>Bridge Rhythm</span>
+            <input id="bridge-rhythm-level" type="range" min="1" max="10" value="5" />
+            <output id="bridge-rhythm-level-value">5</output>
+          </label>
+        </div>
+
+        <p class="eyebrow control-title">Production</p>
+
+        <div class="controls-grid">
+          <label class="control">
+            <span>Room Size (%)</span>
+            <input id="room-size" type="range" min="0" max="100" value="42" />
+            <output id="room-size-value">42</output>
+          </label>
+
+          <label class="control">
+            <span>Dynamics</span>
+            <input id="dynamics" type="range" min="1" max="10" value="7" />
+            <output id="dynamics-value">7</output>
+          </label>
+
+          <label class="control">
+            <span>Stereo Width</span>
+            <input id="stereo-width" type="range" min="1" max="10" value="6" />
+            <output id="stereo-width-value">6</output>
+          </label>
+        </div>
+
+        <details class="advanced-panel">
+          <summary>Advanced controls</summary>
+          <div class="controls-grid advanced-controls">
+            <label class="control">
+              <span>Tempo (BPM)</span>
+              <input id="tempo" type="range" min="60" max="160" value="90" />
+              <output id="tempo-value">90</output>
+            </label>
+
+            <label class="control">
+              <span>Energy</span>
+              <input id="energy" type="range" min="1" max="10" value="5" />
+              <output id="energy-value">5</output>
+            </label>
+
+            <label class="control">
+              <span>Complexity</span>
+              <input id="complexity" type="range" min="1" max="10" value="4" />
+              <output id="complexity-value">4</output>
+            </label>
+
+            <label class="control">
+              <span>Swing (%)</span>
+              <input id="swing" type="range" min="0" max="70" value="18" />
+              <output id="swing-value">18</output>
+            </label>
+
+            <label class="control">
+              <span>Variation</span>
+              <input id="variation" type="range" min="1" max="10" value="5" />
+              <output id="variation-value">5</output>
+            </label>
+
+            <label class="control">
+              <span>Reverb (%)</span>
+              <input id="reverb" type="range" min="0" max="100" value="28" />
+              <output id="reverb-value">28</output>
+            </label>
+
+            <label class="control">
+              <span>Drum Level</span>
+              <input id="drum-level" type="range" min="1" max="10" value="7" />
+              <output id="drum-level-value">7</output>
+            </label>
+
+            <label class="control">
+              <span>Bass Level</span>
+              <input id="bass-level" type="range" min="1" max="10" value="7" />
+              <output id="bass-level-value">7</output>
+            </label>
+
+            <label class="control">
+              <span>Melody Level</span>
+              <input id="melody-level" type="range" min="1" max="10" value="6" />
+              <output id="melody-level-value">6</output>
+            </label>
+
+            <label class="control">
+              <span>Atmosphere</span>
+              <input id="atmosphere" type="range" min="1" max="10" value="5" />
+              <output id="atmosphere-value">5</output>
+            </label>
+          </div>
+        </details>
+
+        <div class="now-playing">
+          <div class="theory-hud-header">
+            <div class="theory-hud-header-title">
+              <span class="theory-hud-dot" aria-hidden="true"></span>
+              <span>Status HUD</span>
+            </div>
+            <div class="theory-hud-header-actions">
+              <span id="next-shift-mini" class="theory-hud-mini-countdown" title="Next shift timer">-</span>
+              <button
+                id="theory-hud-toggle"
+                class="ghost-btn theory-hud-toggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="theory-hud-body"
+              >
+                Show
+              </button>
+            </div>
+          </div>
+
+          <div id="theory-hud-body" class="hidden">
+            <div class="theory-hud-item theory-hud-item-hero">
+              <span class="theory-hud-label">Now Playing</span>
+              <span id="now-playing" class="theory-hud-value">-</span>
+            </div>
+
+            <div class="theory-hud-inline">
+              <div class="theory-hud-item theory-hud-pill">
+                <span class="theory-hud-label">Section</span>
+                <span id="current-section" class="theory-hud-value theory-hud-section">-</span>
+              </div>
+              <div class="theory-hud-item theory-hud-pill">
+                <span class="theory-hud-label">Next Shift</span>
+                <span id="next-shift" class="theory-hud-value theory-hud-countdown">-</span>
+              </div>
+            </div>
+
+            <div class="theory-hud-item">
+              <span class="theory-hud-label">Current Chord</span>
+              <span id="current-chord" class="theory-hud-value">-</span>
+            </div>
+
+            <div class="theory-hud-item">
+              <span class="theory-hud-label">Progression (Roman)</span>
+              <span id="theory-progressions-roman" class="theory-hud-value">-</span>
+            </div>
+
+            <p class="theory-guide">Roman numerals show scale-degree movement in the selected key/mode.</p>
+
+            <div class="theory-hud-item">
+              <span class="theory-hud-label">Progression (Chord Names)</span>
+              <span id="theory-progressions-chords" class="theory-hud-value">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="melody-editor">
+          <div class="melody-editor-header">
+            <p><strong>Melody Editor</strong></p>
+            <button
+              id="melody-editor-toggle"
+              class="ghost-btn melody-editor-toggle"
+              type="button"
+              aria-expanded="false"
+              aria-controls="melody-editor-body"
+            >
+              Show Melody Editor
+            </button>
+          </div>
+
+          <div id="melody-editor-body" class="hidden">
+            <div class="melody-editor-toolbar">
+              <label class="control melody-editor-control">
+                <span>Edit Section</span>
+                <select id="melody-editor-section">
+                  <option value="verse">Verse</option>
+                  <option value="chorus">Chorus</option>
+                  <option value="bridge">Bridge</option>
+                </select>
+              </label>
+
+              <label class="melody-custom-toggle">
+                <input id="melody-follow-playback" type="checkbox" checked />
+                Follow Playback Section
+              </label>
+
+              <button id="melody-load-generated" class="secondary-btn" type="button">Load Generated</button>
+              <button id="melody-clear-custom" class="ghost-btn" type="button">Clear Custom</button>
+
+              <label class="control melody-editor-control">
+                <span>Draw Duration</span>
+                <select id="melody-draw-duration">
+                  <option value="1">1 step</option>
+                  <option value="2">2 steps</option>
+                  <option value="3">3 steps</option>
+                  <option value="4">4 steps</option>
+                  <option value="6">6 steps</option>
+                  <option value="8">8 steps</option>
+                </select>
+              </label>
+
+              <label class="control melody-editor-control">
+                <span>Draw Velocity</span>
+                <input id="melody-draw-velocity" type="range" min="10" max="100" value="62" />
+                <output id="melody-draw-velocity-value">62</output>
+              </label>
+
+              <label class="melody-custom-toggle">
+                <input id="melody-use-custom" type="checkbox" />
+                Use Custom Melody
+              </label>
+            </div>
+
+            <p><strong>Generated melody:</strong> <span id="melody-generated-preview">-</span></p>
+            <p><strong>Custom melody:</strong> <span id="melody-custom-preview">-</span></p>
+            <p><strong>Timing mode:</strong> <span id="melody-timing-mode">-</span></p>
+            <p><strong>Playhead:</strong> <span id="melody-playhead">stopped</span></p>
+            <div id="melody-timing-list" class="melody-timing-list"></div>
+
+            <div class="piano-roll-wrap">
+              <div id="piano-roll" class="piano-roll"></div>
+            </div>
+            <p class="melody-editor-help">
+              Click cells to draw notes. Active custom notes are solid, generated notes are shown as faint ghosts.
+            </p>
+          </div>
+        </div>
+
+        <div class="element-meters">
+          <div class="meter-grid">
+            <div class="meter-row">
+              <span>Kick</span>
+              <div class="meter-track"><span id="meter-kick" class="meter-fill"></span></div>
+              <button type="button" id="mute-kick" class="mute-toggle" aria-pressed="false">Mute</button>
+            </div>
+            <div class="meter-row">
+              <span>Snare</span>
+              <div class="meter-track"><span id="meter-snare" class="meter-fill"></span></div>
+              <button type="button" id="mute-snare" class="mute-toggle" aria-pressed="false">Mute</button>
+            </div>
+            <div class="meter-row">
+              <span>Hi-Hat</span>
+              <div class="meter-track"><span id="meter-hat" class="meter-fill"></span></div>
+              <button type="button" id="mute-hat" class="mute-toggle" aria-pressed="false">Mute</button>
+            </div>
+            <div class="meter-row">
+              <span>Open Hat</span>
+              <div class="meter-track"><span id="meter-open-hat" class="meter-fill"></span></div>
+              <button type="button" id="mute-open-hat" class="mute-toggle" aria-pressed="false">Mute</button>
+            </div>
+            <div class="meter-row">
+              <span>Perc</span>
+              <div class="meter-track"><span id="meter-perc" class="meter-fill"></span></div>
+              <button type="button" id="mute-perc" class="mute-toggle" aria-pressed="false">Mute</button>
+            </div>
+            <div class="meter-row">
+              <span>Bass</span>
+              <div class="meter-track"><span id="meter-bass" class="meter-fill"></span></div>
+              <button type="button" id="mute-bass" class="mute-toggle" aria-pressed="false">Mute</button>
+            </div>
+            <div class="meter-row">
+              <span>Melody</span>
+              <div class="meter-track"><span id="meter-melody" class="meter-fill"></span></div>
+              <button type="button" id="mute-melody" class="mute-toggle" aria-pressed="false">Mute</button>
+            </div>
+            <div class="meter-row">
+              <span>Chords</span>
+              <div class="meter-track"><span id="meter-pad" class="meter-fill"></span></div>
+              <button type="button" id="mute-pad" class="mute-toggle" aria-pressed="false">Mute</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="player-footer">
+          <div class="player-footer-inner">
+            <button
+              id="start-btn"
+              class="player-icon-btn primary-btn"
+              type="button"
+              aria-label="Start Playback"
+              title="Start Playback"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M8 5v14l11-7z" fill="currentColor" />
+              </svg>
+            </button>
+            <button
+              id="pause-btn"
+              class="player-icon-btn secondary-btn"
+              type="button"
+              aria-label="Pause Playback"
+              title="Pause Playback"
+              disabled
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor" />
+              </svg>
+            </button>
+            <button
+              id="refresh-btn"
+              class="player-icon-btn ghost-btn"
+              type="button"
+              aria-label="Generate New Pattern"
+              title="Generate New Pattern"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M4 7h3l9 10h4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
+                <path d="M4 17h3l2.5-2.8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
+                <path d="M20 7h-4l-2.5 2.8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
+                <path d="M18 5l2 2-2 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
+                <path d="M18 15l2 2-2 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
