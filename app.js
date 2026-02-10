@@ -27,6 +27,16 @@ const ui = {
   voiceLeading: document.getElementById("voice-leading"),
   chordToneGravity: document.getElementById("chord-tone-gravity"),
   diatonicStrictness: document.getElementById("diatonic-strictness"),
+  sectionTempoMotion: document.getElementById("section-tempo-motion"),
+  transitionFillAmount: document.getElementById("transition-fill-amount"),
+  modulationPlan: document.getElementById("modulation-plan"),
+  counterMelody: document.getElementById("counter-melody"),
+  chordActivity: document.getElementById("chord-activity"),
+  accompanimentStyle: document.getElementById("accompaniment-style"),
+  inversionMobility: document.getElementById("inversion-mobility"),
+  innerVoiceActivity: document.getElementById("inner-voice-activity"),
+  suspensionRate: document.getElementById("suspension-rate"),
+  cadenceStrength: document.getElementById("cadence-strength"),
   randomTheoryMode: document.getElementById("random-theory-mode"),
   melodyInstrument: document.getElementById("melody-instrument"),
   chordInstrument: document.getElementById("chord-instrument"),
@@ -71,6 +81,11 @@ const ui = {
   chordToneGravityValue: document.getElementById("chord-tone-gravity-value"),
   diatonicStrictnessValue: document.getElementById("diatonic-strictness-value"),
   melodyToneValue: document.getElementById("melody-tone-value"),
+  chordActivityValue: document.getElementById("chord-activity-value"),
+  inversionMobilityValue: document.getElementById("inversion-mobility-value"),
+  innerVoiceActivityValue: document.getElementById("inner-voice-activity-value"),
+  suspensionRateValue: document.getElementById("suspension-rate-value"),
+  cadenceStrengthValue: document.getElementById("cadence-strength-value"),
 
   verseMelodyLevelValue: document.getElementById("verse-melody-level-value"),
   chorusMelodyLevelValue: document.getElementById("chorus-melody-level-value"),
@@ -295,13 +310,61 @@ function getShiftMs() {
   return Number(ui.shiftMinutes.value) * 60 * 1000;
 }
 
+function getSectionNameByIndex(index) {
+  const total = SECTION_ORDER.length;
+  return SECTION_ORDER[((index % total) + total) % total];
+}
+
+function getSectionIndexAtStepCounter(stepCounter) {
+  return Math.floor(stepCounter / TOTAL_STEPS) % SECTION_ORDER.length;
+}
+
+function getSectionTempoMultiplier(stepCounter = transport.stepCounter, stepInSection = transport.currentStep) {
+  if (!state.pattern?.sectionTempoMap) {
+    return 1;
+  }
+
+  const sectionIndex = getSectionIndexAtStepCounter(stepCounter);
+  const sectionName = getSectionNameByIndex(sectionIndex);
+  const tempoMap = state.pattern.sectionTempoMap;
+  const current = tempoMap[sectionName] || 1;
+  const crossfadeSteps = clamp(Math.round(tempoMap.crossfadeSteps || 0), 0, Math.floor(TOTAL_STEPS / 2));
+
+  if (crossfadeSteps <= 0) {
+    return current;
+  }
+
+  if (stepInSection < crossfadeSteps) {
+    const prevName = getSectionNameByIndex(sectionIndex - 1);
+    const prev = tempoMap[prevName] || current;
+    const t = (stepInSection + 1) / (crossfadeSteps + 1);
+    return prev + (current - prev) * t;
+  }
+
+  if (stepInSection >= TOTAL_STEPS - crossfadeSteps) {
+    const nextName = getSectionNameByIndex(sectionIndex + 1);
+    const next = tempoMap[nextName] || current;
+    const offset = stepInSection - (TOTAL_STEPS - crossfadeSteps);
+    const t = (offset + 1) / (crossfadeSteps + 1);
+    return current + (next - current) * t;
+  }
+
+  return current;
+}
+
+function getStepDurationForSection(sectionName) {
+  const baseStep = getStepDurationSeconds();
+  const sectionTempo = state.pattern?.sectionTempoMap?.[sectionName] || 1;
+  return baseStep / Math.max(0.72, sectionTempo);
+}
+
 function formatSeconds(seconds) {
   return `${seconds.toFixed(2)}s`;
 }
 
-function buildStepTimeOffsets() {
+function buildStepTimeOffsets(sectionName = "verse") {
   const offsets = new Array(TOTAL_STEPS).fill(0);
-  const baseStep = getStepDurationSeconds();
+  const baseStep = getStepDurationForSection(sectionName);
   const swing = clamp(Number(ui.swing.value) / 100, 0, 0.45);
   const swingOffset = baseStep * swing * 0.5;
 
@@ -317,11 +380,11 @@ function buildStepTimeOffsets() {
   return offsets;
 }
 
-function getDurationSecondsFromOffsets(startStep, durationSteps) {
+function getDurationSecondsFromOffsets(startStep, durationSteps, sectionName = "verse") {
   if (durationSteps <= 0 || startStep < 0 || startStep >= TOTAL_STEPS) {
     return 0;
   }
-  const baseStep = getStepDurationSeconds();
+  const baseStep = getStepDurationForSection(sectionName);
   const swing = clamp(Number(ui.swing.value) / 100, 0, 0.45);
   const swingOffset = baseStep * swing * 0.5;
 
@@ -554,7 +617,7 @@ function renderPianoRoll(sectionName) {
     return;
   }
 
-  const stepOffsets = buildStepTimeOffsets();
+  const stepOffsets = buildStepTimeOffsets(sectionName);
   const customLane = normalizeMelodyLane(state.customMelodies[sectionName]);
   const generatedLane = normalizeMelodyLane(getGeneratedMelodyLane(sectionName));
   const customMap = buildMelodyLaneMaps(customLane);
@@ -623,11 +686,11 @@ function renderMelodyTimingList(sectionName, activeLane) {
     return;
   }
 
-  const stepOffsets = buildStepTimeOffsets();
+  const stepOffsets = buildStepTimeOffsets(sectionName);
   events.forEach((event) => {
     const startStep = event.step - 1;
     const startTime = stepOffsets[startStep] || 0;
-    const dur = getDurationSecondsFromOffsets(startStep, event.durationSteps);
+    const dur = getDurationSecondsFromOffsets(startStep, event.durationSteps, sectionName);
     const chip = document.createElement("span");
     chip.className = "melody-timing-chip";
     chip.textContent = `${formatSeconds(startTime)} · ${midiToNoteLabel(event.midi)} · step ${event.step} · dur ${dur.toFixed(2)}s`;
@@ -683,7 +746,7 @@ function updateMelodyPlayhead(sectionName, step) {
   }
 
   const lane = normalizeMelodyLane(getPlaybackMelodyLane(sectionName));
-  const stepOffsets = buildStepTimeOffsets();
+  const stepOffsets = buildStepTimeOffsets(sectionName);
   const note = lane[step];
   const noteLabel = note ? midiToNoteLabel(note.midi) : "rest";
   ui.melodyPlayhead.textContent = `${sectionName} • ${formatSeconds(stepOffsets[step] || 0)} • step ${step + 1} • ${noteLabel}`;
@@ -851,6 +914,7 @@ function setTheoryHudVisibility(visible) {
 }
 
 function randomizeInstrumentalTheoryControls() {
+  ui.key.value = String(randomInt(0, 11));
   ui.scaleMode.value = randomFromArray(["major", "minor", "dorian", "mixolydian"]);
   ui.melodyInstrument.value = randomFromArray(["grand-piano", "nylon-guitar", "warm-strings", "woodwind"]);
   ui.chordInstrument.value = randomFromArray(["warm-strings", "organ"]);
@@ -860,6 +924,16 @@ function randomizeInstrumentalTheoryControls() {
   ui.voiceLeading.value = String(randomInt(2, 10));
   ui.chordToneGravity.value = String(randomInt(2, 10));
   ui.diatonicStrictness.value = String(randomInt(3, 10));
+  ui.sectionTempoMotion.value = randomFromArray(["locked", "gentle", "gentle", "expressive"]);
+  ui.transitionFillAmount.value = randomFromArray(["light", "medium", "high", "medium"]);
+  ui.modulationPlan.value = randomFromArray(["none", "relative-bridge", "dominant-pull", "modal-color"]);
+  ui.counterMelody.value = randomFromArray(["off", "sparse", "conversational", "active"]);
+  ui.chordActivity.value = String(randomInt(3, 10));
+  ui.accompanimentStyle.value = randomFromArray(["chorale", "broken", "arpeggio", "pulse", "tremolo"]);
+  ui.inversionMobility.value = String(randomInt(3, 10));
+  ui.innerVoiceActivity.value = String(randomInt(2, 10));
+  ui.suspensionRate.value = String(randomInt(1, 10));
+  ui.cadenceStrength.value = String(randomInt(2, 10));
   updateOutputs();
   applyMixFromUI();
 }
@@ -883,6 +957,11 @@ function updateOutputs() {
   ui.chordToneGravityValue.textContent = ui.chordToneGravity.value;
   ui.diatonicStrictnessValue.textContent = ui.diatonicStrictness.value;
   ui.melodyToneValue.textContent = ui.melodyTone.value;
+  ui.chordActivityValue.textContent = ui.chordActivity.value;
+  ui.inversionMobilityValue.textContent = ui.inversionMobility.value;
+  ui.innerVoiceActivityValue.textContent = ui.innerVoiceActivity.value;
+  ui.suspensionRateValue.textContent = ui.suspensionRate.value;
+  ui.cadenceStrengthValue.textContent = ui.cadenceStrength.value;
 
   ui.verseMelodyLevelValue.textContent = ui.verseMelodyLevel.value;
   ui.chorusMelodyLevelValue.textContent = ui.chorusMelodyLevel.value;
@@ -1820,6 +1899,475 @@ function progressionToChordText(progression, scaleName, rootMidi) {
   return progression.map((degree) => degreeToChordName(scaleName, rootMidi, degree)).join(" -> ");
 }
 
+function getHarmonySignature(scaleName, rootMidi) {
+  const note = keyNames[normalizeSemitone(rootMidi)] || "C";
+  return `${note} ${scaleName}`;
+}
+
+function buildSectionTempoMap(sectionTempoMotion, sectionProfiles) {
+  if (sectionTempoMotion === "expressive") {
+    const verse = clamp(0.98 + (sectionProfiles.verse.rhythm - 0.5) * 0.04, 0.94, 1.02);
+    const chorus = clamp(1.06 + (sectionProfiles.chorus.rhythm - 0.5) * 0.05, 1.01, 1.12);
+    const bridge = clamp(0.96 + (sectionProfiles.bridge.rhythm - 0.5) * 0.04, 0.91, 1.01);
+    return { verse, chorus, bridge, crossfadeSteps: 10, label: "Expressive Tempo Motion" };
+  }
+
+  if (sectionTempoMotion === "gentle") {
+    const verse = clamp(0.99 + (sectionProfiles.verse.rhythm - 0.5) * 0.03, 0.97, 1.01);
+    const chorus = clamp(1.03 + (sectionProfiles.chorus.rhythm - 0.5) * 0.04, 1.0, 1.07);
+    const bridge = clamp(0.98 + (sectionProfiles.bridge.rhythm - 0.5) * 0.03, 0.95, 1.01);
+    return { verse, chorus, bridge, crossfadeSteps: 7, label: "Gentle Tempo Motion" };
+  }
+
+  return { verse: 1, chorus: 1, bridge: 1, crossfadeSteps: 0, label: "Locked Tempo" };
+}
+
+function getTransitionFillSettings(fillAmount) {
+  if (fillAmount === "high") {
+    return { chance: 0.62, breakChance: 0.2, burst: 0.9 };
+  }
+  if (fillAmount === "medium") {
+    return { chance: 0.42, breakChance: 0.14, burst: 0.72 };
+  }
+  if (fillAmount === "light") {
+    return { chance: 0.24, breakChance: 0.08, burst: 0.52 };
+  }
+  return { chance: 0, breakChance: 0, burst: 0 };
+}
+
+function applyTransitionFills({ kick, snare, hat, openHat, perc, rhythmInfluence, complexity, fillAmount }) {
+  const fill = getTransitionFillSettings(fillAmount);
+  if (fill.chance <= 0) {
+    return;
+  }
+
+  const bars = TOTAL_STEPS / STEPS_PER_BAR;
+  for (let bar = 0; bar < bars; bar += 1) {
+    const isSectionEnd = bar === bars - 1;
+    const fillChance = fill.chance + rhythmInfluence * 0.12 + (isSectionEnd ? 0.18 : 0);
+    if (!randomChance(fillChance)) {
+      continue;
+    }
+
+    const endStep = (bar + 1) * STEPS_PER_BAR - 1;
+    const startStep = Math.max(bar * STEPS_PER_BAR, endStep - 3);
+    const rise = 0.23 + fill.burst * 0.22 + complexity * 0.12;
+
+    for (let step = startStep; step <= endStep; step += 1) {
+      const t = (step - startStep) / Math.max(1, endStep - startStep);
+      snare[step] = clamp(Math.max(snare[step], rise + t * 0.28), 0, 0.95);
+      hat[step] = clamp(Math.max(hat[step], 0.2 + fill.burst * 0.22 + t * 0.1), 0, 0.78);
+      perc[step] = clamp(Math.max(perc[step], 0.12 + fill.burst * 0.14 + t * 0.08), 0, 0.62);
+      if (step === startStep || step === endStep) {
+        kick[step] = clamp(Math.max(kick[step], 0.36 + fill.burst * 0.2 + t * 0.12), 0, 0.92);
+      }
+    }
+
+    openHat[endStep] = clamp(Math.max(openHat[endStep], 0.16 + fill.burst * 0.14), 0, 0.45);
+
+    const breakChance = fill.breakChance + (isSectionEnd ? 0.1 : 0);
+    if (randomChance(breakChance)) {
+      const breakStart = Math.max(bar * STEPS_PER_BAR, startStep - 4);
+      for (let step = breakStart; step < startStep; step += 1) {
+        kick[step] *= 0.76;
+        hat[step] *= 0.38;
+        perc[step] *= 0.35;
+      }
+    }
+  }
+}
+
+function getCounterMelodyProfile(mode) {
+  if (mode === "active") {
+    return {
+      enabled: true,
+      baseChance: 0.16,
+      withLeadFactor: 0.62,
+      restFactor: 1.28,
+      spread: 3,
+      anchorBoost: 0.08,
+      sustainChance: 0.4,
+      dialogue: 0.56,
+    };
+  }
+
+  if (mode === "conversational") {
+    return {
+      enabled: true,
+      baseChance: 0.1,
+      withLeadFactor: 0.44,
+      restFactor: 1.25,
+      spread: 2,
+      anchorBoost: 0.07,
+      sustainChance: 0.3,
+      dialogue: 0.72,
+    };
+  }
+
+  if (mode === "sparse") {
+    return {
+      enabled: true,
+      baseChance: 0.06,
+      withLeadFactor: 0.34,
+      restFactor: 1.05,
+      spread: 2,
+      anchorBoost: 0.04,
+      sustainChance: 0.2,
+      dialogue: 0.4,
+    };
+  }
+
+  return {
+    enabled: false,
+    baseChance: 0,
+    withLeadFactor: 0,
+    restFactor: 0,
+    spread: 0,
+    anchorBoost: 0,
+    sustainChance: 0,
+    dialogue: 0,
+  };
+}
+
+function getSectionHarmonyPlan(baseScaleName, baseRootMidi, modulationPlan) {
+  const sectionHarmony = {
+    verse: { scaleName: baseScaleName, rootMidi: baseRootMidi },
+    chorus: { scaleName: baseScaleName, rootMidi: baseRootMidi },
+    bridge: { scaleName: baseScaleName, rootMidi: baseRootMidi },
+  };
+
+  if (modulationPlan === "relative-bridge") {
+    const fromMinorFamily = baseScaleName === "minor" || baseScaleName === "dorian";
+    sectionHarmony.bridge = fromMinorFamily
+      ? { scaleName: "major", rootMidi: baseRootMidi + 3 }
+      : { scaleName: "minor", rootMidi: baseRootMidi + 9 };
+    return { sectionHarmony, label: "Relative Bridge Modulation", mode: modulationPlan };
+  }
+
+  if (modulationPlan === "dominant-pull") {
+    sectionHarmony.bridge = { scaleName: "mixolydian", rootMidi: baseRootMidi + 7 };
+    return { sectionHarmony, label: "Dominant Bridge Pull", mode: modulationPlan };
+  }
+
+  if (modulationPlan === "modal-color") {
+    sectionHarmony.bridge = {
+      scaleName: baseScaleName === "minor" ? "dorian" : "mixolydian",
+      rootMidi: baseRootMidi,
+    };
+    return { sectionHarmony, label: "Modal Color Bridge", mode: modulationPlan };
+  }
+
+  return { sectionHarmony, label: "No Modulation", mode: "none" };
+}
+
+function closestPitchToReference(pitch, reference) {
+  if (!Number.isFinite(reference)) {
+    return pitch;
+  }
+
+  let best = pitch;
+  let bestDistance = Math.abs(pitch - reference);
+  for (let shift = -3; shift <= 3; shift += 1) {
+    const candidate = pitch + shift * 12;
+    const distance = Math.abs(candidate - reference);
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+function clampPitchRange(pitch, min = 46, max = 88) {
+  let value = pitch;
+  while (value < min) {
+    value += 12;
+  }
+  while (value > max) {
+    value -= 12;
+  }
+  return clamp(value, min, max);
+}
+
+function createPadVoicing({
+  scaleName,
+  rootMidi,
+  degree,
+  harmonicDensity,
+  chordComplexity,
+  inversionMobility,
+  innerVoiceActivity,
+  previousVoicing,
+}) {
+  const rawChord = buildChord(scaleName, rootMidi, degree, {
+    harmonicDensity,
+    chordComplexity,
+  }).map((note) => note + 24);
+
+  const voices = rawChord.slice(0, 4);
+  while (voices.length < 4) {
+    voices.push((voices[voices.length - 1] || rootMidi + 48) + 5);
+  }
+  voices.sort((a, b) => a - b);
+
+  const mobility = clamp(inversionMobility, 0, 1);
+  if (randomChance(0.08 + mobility * 0.5)) {
+    const shifts = mobility > 0.72 ? randomInt(1, 2) : 1;
+    for (let i = 0; i < shifts; i += 1) {
+      voices.push((voices.shift() || voices[0]) + 12);
+    }
+  }
+
+  if (previousVoicing?.length === voices.length) {
+    for (let i = 0; i < voices.length; i += 1) {
+      voices[i] = closestPitchToReference(voices[i], previousVoicing[i]);
+    }
+  }
+
+  for (let i = 1; i < voices.length; i += 1) {
+    while (voices[i] <= voices[i - 1]) {
+      voices[i] += 12;
+    }
+  }
+
+  const inner = clamp(innerVoiceActivity, 0, 1);
+  if (inner > 0.45 && randomChance(0.2 + inner * 0.3)) {
+    const motion = randomChance(0.5) ? 1 : -1;
+    voices[1] += motion * (randomChance(0.25 + inner * 0.45) ? 2 : 1);
+  }
+  if (inner > 0.58 && randomChance(0.16 + inner * 0.3)) {
+    const motion = randomChance(0.5) ? 1 : -1;
+    voices[2] += motion * (randomChance(0.2 + inner * 0.4) ? 2 : 1);
+  }
+
+  for (let i = 0; i < voices.length; i += 1) {
+    voices[i] = clampPitchRange(voices[i], 46, 88);
+  }
+  voices.sort((a, b) => a - b);
+  for (let i = 1; i < voices.length; i += 1) {
+    if (voices[i] <= voices[i - 1]) {
+      voices[i] = clampPitchRange(voices[i - 1] + 2, 46, 90);
+    }
+  }
+
+  return voices;
+}
+
+function placePadEvent(pad, step, chord, velocity, durationSteps) {
+  if (step < 0 || step >= TOTAL_STEPS) {
+    return;
+  }
+
+  const safeDuration = clamp(Math.round(durationSteps), 1, TOTAL_STEPS - step);
+  const event = {
+    chord: chord.map((note) => clamp(Math.round(note), 38, 96)),
+    velocity: clamp(velocity, 0.08, 0.95),
+    durationSteps: safeDuration,
+  };
+
+  const existing = pad[step];
+  if (!existing || event.velocity >= existing.velocity) {
+    pad[step] = event;
+  }
+}
+
+function withInnerVoiceMotion(voicing, amount) {
+  const moved = voicing.slice();
+  const strength = clamp(amount, 0, 1);
+  if (randomChance(0.3 + strength * 0.35)) {
+    moved[1] += randomChance(0.5) ? 1 : -1;
+  }
+  if (randomChance(0.18 + strength * 0.3)) {
+    moved[2] += randomChance(0.5) ? 2 : -2;
+  }
+  moved.sort((a, b) => a - b);
+  return moved.map((note, index) => {
+    if (index === 0) {
+      return clampPitchRange(note, 38, 72);
+    }
+    return clampPitchRange(Math.max(note, moved[index - 1] + 2), 42, 94);
+  });
+}
+
+function addAccompanimentEvents({
+  pad,
+  startStep,
+  chordSpanSteps,
+  voicing,
+  nextVoicing,
+  style,
+  chordActivity,
+  innerVoiceActivity,
+  suspensionRate,
+  cadenceStrength,
+  isPhraseEnd,
+  harmonyInfluence,
+  rhythmInfluence,
+  energy,
+}) {
+  const activity = clamp(chordActivity, 0, 1);
+  const inner = clamp(innerVoiceActivity, 0, 1);
+  const suspension = clamp(suspensionRate, 0, 1);
+  const cadence = clamp(cadenceStrength, 0, 1);
+  const baseVelocity = clamp(0.14 + harmonyInfluence * 0.36 + energy * 0.16, 0.12, 0.88);
+  const endStep = Math.min(TOTAL_STEPS - 1, startStep + chordSpanSteps - 1);
+
+  const addPulseCadence = () => {
+    if (!isPhraseEnd || cadence < 0.28) {
+      return;
+    }
+    const cadenceStart = Math.max(startStep, endStep - 7);
+    for (let step = cadenceStart; step <= endStep; step += 2) {
+      const t = (step - cadenceStart) / Math.max(1, endStep - cadenceStart);
+      const voiced = withInnerVoiceMotion(voicing, inner + cadence * 0.3);
+      placePadEvent(
+        pad,
+        step,
+        voiced,
+        baseVelocity + 0.06 + t * 0.12 + cadence * 0.1,
+        2
+      );
+    }
+    if (nextVoicing && randomChance(0.22 + cadence * 0.42)) {
+      placePadEvent(
+        pad,
+        Math.max(startStep, endStep - 1),
+        nextVoicing,
+        baseVelocity + 0.08 + cadence * 0.14,
+        1
+      );
+    }
+  };
+
+  if (style === "chorale") {
+    placePadEvent(
+      pad,
+      startStep,
+      voicing,
+      baseVelocity + 0.04,
+      Math.max(4, chordSpanSteps - (suspension > 0.35 ? 2 : 0))
+    );
+
+    if (inner > 0.42 && chordSpanSteps >= 8) {
+      const midStep = startStep + Math.floor(chordSpanSteps / 2);
+      placePadEvent(
+        pad,
+        midStep,
+        withInnerVoiceMotion(voicing, inner),
+        baseVelocity - 0.02,
+        Math.max(2, Math.floor(chordSpanSteps / 3))
+      );
+    }
+
+    if (suspension > 0.35 && chordSpanSteps >= 4) {
+      const susStep = Math.max(startStep + 1, endStep - 2);
+      const susVoicing = voicing.slice();
+      susVoicing[susVoicing.length - 1] += randomChance(0.5) ? 1 : 2;
+      placePadEvent(pad, susStep, susVoicing, baseVelocity + 0.04, 1);
+      placePadEvent(pad, susStep + 1, voicing, baseVelocity + 0.02, 1);
+    }
+
+    addPulseCadence();
+    return;
+  }
+
+  if (style === "pulse") {
+    const addOffbeats = activity > 0.62;
+    for (let step = startStep; step <= endStep; step += 4) {
+      placePadEvent(
+        pad,
+        step,
+        withInnerVoiceMotion(voicing, inner * 0.7),
+        baseVelocity + activity * 0.1,
+        addOffbeats ? 2 : 3
+      );
+      if (addOffbeats && step + 2 <= endStep) {
+        placePadEvent(
+          pad,
+          step + 2,
+          withInnerVoiceMotion(voicing, inner * 0.45),
+          baseVelocity - 0.05 + activity * 0.08,
+          1
+        );
+      }
+    }
+    addPulseCadence();
+    return;
+  }
+
+  if (style === "broken") {
+    const subdivision = activity > 0.74 ? 1 : activity > 0.46 ? 2 : 4;
+    const pattern = [0, 2, 1, 3, 1, 2];
+    for (let offset = 0; offset < chordSpanSteps; offset += subdivision) {
+      const step = startStep + offset;
+      if (step > endStep) {
+        break;
+      }
+      const patternIndex = Math.floor(offset / subdivision) % pattern.length;
+      const voice = voicing[pattern[patternIndex] % voicing.length];
+      const chord = randomChance(0.18 + inner * 0.36)
+        ? [voice, voicing[Math.min(voicing.length - 1, (pattern[patternIndex] + 1) % voicing.length)]]
+        : [voice];
+      placePadEvent(
+        pad,
+        step,
+        chord,
+        baseVelocity - 0.04 + activity * 0.12 + (step % 4 === 0 ? 0.06 : 0),
+        Math.max(1, subdivision)
+      );
+    }
+    addPulseCadence();
+    return;
+  }
+
+  if (style === "arpeggio") {
+    const subdivision = activity > 0.64 ? 1 : 2;
+    const stride = randomChance(0.5) ? 1 : -1;
+    let pointer = stride > 0 ? 0 : voicing.length - 1;
+    for (let offset = 0; offset < chordSpanSteps; offset += subdivision) {
+      const step = startStep + offset;
+      if (step > endStep) {
+        break;
+      }
+      const note = voicing[pointer];
+      placePadEvent(
+        pad,
+        step,
+        [note],
+        baseVelocity - 0.06 + activity * 0.12 + (step % 8 === 0 ? 0.05 : 0),
+        Math.max(1, subdivision)
+      );
+      pointer += stride;
+      if (pointer >= voicing.length) {
+        pointer = voicing.length - 2;
+      } else if (pointer < 0) {
+        pointer = 1;
+      }
+    }
+    addPulseCadence();
+    return;
+  }
+
+  const subdivision = activity > 0.62 ? 1 : 2;
+  const upperDyad = [voicing[Math.max(1, voicing.length - 2)], voicing[voicing.length - 1]];
+  for (let offset = 0; offset < chordSpanSteps; offset += subdivision) {
+    const step = startStep + offset;
+    if (step > endStep) {
+      break;
+    }
+    const isBeat = step % 4 === 0;
+    const chord = isBeat ? [voicing[0], voicing[2]] : upperDyad;
+    placePadEvent(
+      pad,
+      step,
+      chord,
+      baseVelocity - 0.03 + activity * 0.13 + (isBeat ? 0.06 : 0),
+      Math.max(1, subdivision)
+    );
+  }
+  addPulseCadence();
+}
+
 function createSectionPattern({
   sectionName,
   progression,
@@ -1837,6 +2385,14 @@ function createSectionPattern({
   rhythmDensity,
   chordToneGravity,
   diatonicStrictness,
+  transitionFillAmount,
+  counterMelodyMode,
+  accompanimentStyle,
+  chordActivity,
+  inversionMobility,
+  innerVoiceActivity,
+  suspensionRate,
+  cadenceStrength,
 }) {
   const rhythmInfluence = clamp(sectionProfile.rhythm * 0.65 + rhythmDensity * 0.35, 0, 1);
   const melodyInfluence = clamp(sectionProfile.melody, 0, 1);
@@ -1908,13 +2464,28 @@ function createSectionPattern({
     ceiling: 0.38,
   });
 
+  applyTransitionFills({
+    kick,
+    snare,
+    hat,
+    openHat,
+    perc,
+    rhythmInfluence,
+    complexity,
+    fillAmount: transitionFillAmount,
+  });
+
   const bass = new Array(TOTAL_STEPS).fill(null);
   const melody = new Array(TOTAL_STEPS).fill(null);
+  const counterMelody = new Array(TOTAL_STEPS).fill(null);
   const pad = new Array(TOTAL_STEPS).fill(null);
   const chordDegreeByStep = new Array(TOTAL_STEPS).fill(progression[0]);
+  const counterProfile = getCounterMelodyProfile(counterMelodyMode);
 
   let previousBassDegree = progression[0];
   let motifSeed = progression[0];
+  let previousCounterDegree = progression[0] + 2;
+  let previousPadVoicing = null;
 
   for (let step = 0; step < TOTAL_STEPS; step += 1) {
     const chordIndex = Math.floor(step / chordSpanSteps) % effectiveProgression.length;
@@ -1989,17 +2560,94 @@ function createSectionPattern({
       };
     }
 
+    if (counterProfile.enabled) {
+      const melodyNote = melody[step];
+      const offbeatBoost = step % 4 === 2 || step % 4 === 3 ? 0.06 : 0;
+      let counterChance =
+        counterProfile.baseChance +
+        rhythmInfluence * 0.07 +
+        variation * 0.06 +
+        counterProfile.anchorBoost * (isChordChange ? 1 : 0) +
+        offbeatBoost;
+      counterChance *= melodyNote ? counterProfile.withLeadFactor : counterProfile.restFactor;
+
+      if (randomChance(counterChance)) {
+        const chordTones = [progressionDegree, progressionDegree + 2, progressionDegree + 4, progressionDegree + 6];
+        let counterDegree;
+        if (!melodyNote && randomChance(0.58 + counterProfile.dialogue * 0.24)) {
+          counterDegree = randomFromArray(chordTones);
+        } else {
+          counterDegree = chooseDegreeAround(previousCounterDegree, counterProfile.spread);
+        }
+
+        if (randomChance(chordToneGravity * (0.42 + counterProfile.dialogue * 0.28))) {
+          counterDegree = randomFromArray(chordTones);
+        }
+
+        previousCounterDegree = counterDegree;
+        let midi = rootMidi + preset.melodyOctaveOffset + scaleDegreeSemitone(scaleName, counterDegree) - 12;
+
+        if (melodyNote && Math.abs(midi - melodyNote.midi) < 3) {
+          midi -= 5;
+        }
+
+        if (randomChance((1 - diatonicStrictness) * 0.18)) {
+          midi += randomChance(0.5) ? 1 : -1;
+        }
+
+        counterMelody[step] = {
+          midi: clamp(midi, PIANO_ROLL_MIN_MIDI, PIANO_ROLL_MAX_MIDI),
+          velocity: clamp(
+            0.14 + melodyInfluence * 0.18 + counterProfile.dialogue * 0.12 + Math.random() * 0.08,
+            0.12,
+            0.72
+          ),
+          durationSteps: randomChance(counterProfile.sustainChance + atmosphere * 0.14) ? 2 : 1,
+        };
+      }
+    }
+
     if (isChordChange) {
-      const chord = buildChord(scaleName, rootMidi, progressionDegree, {
+      const nextDegree = effectiveProgression[(chordIndex + 1) % effectiveProgression.length];
+      const voicing = createPadVoicing({
+        scaleName,
+        rootMidi,
+        degree: progressionDegree,
         harmonicDensity: harmonicDensity * (0.6 + harmonyInfluence * 0.4),
         chordComplexity: chordComplexity * (0.5 + harmonyInfluence * 0.5),
-      }).map((note, index) => note + preset.melodyOctaveOffset - (index === 0 ? 12 : 0));
+        inversionMobility,
+        innerVoiceActivity,
+        previousVoicing: previousPadVoicing,
+      });
+      const nextVoicing = createPadVoicing({
+        scaleName,
+        rootMidi,
+        degree: nextDegree,
+        harmonicDensity: harmonicDensity * (0.6 + harmonyInfluence * 0.4),
+        chordComplexity: chordComplexity * (0.5 + harmonyInfluence * 0.5),
+        inversionMobility,
+        innerVoiceActivity,
+        previousVoicing: voicing,
+      });
 
-      pad[step] = {
-        chord,
-        velocity: clamp(0.16 + harmonyInfluence * 0.42 + atmosphere * 0.2, 0.14, 0.92),
-        durationSteps: chordSpanSteps,
-      };
+      addAccompanimentEvents({
+        pad,
+        startStep: step,
+        chordSpanSteps: Math.min(chordSpanSteps, TOTAL_STEPS - step),
+        voicing,
+        nextVoicing,
+        style: accompanimentStyle,
+        chordActivity,
+        innerVoiceActivity,
+        suspensionRate,
+        cadenceStrength,
+        isPhraseEnd: step + chordSpanSteps >= TOTAL_STEPS,
+        harmonyInfluence,
+        rhythmInfluence,
+        energy,
+      });
+
+      previousPadVoicing = voicing;
     }
   }
 
@@ -2015,6 +2663,7 @@ function createSectionPattern({
     perc,
     bass,
     melody,
+    counterMelody,
     pad,
   };
 }
@@ -2035,10 +2684,23 @@ function generatePattern() {
   const rhythmDensity = Number(ui.rhythmDensity.value) / 10;
   const chordToneGravity = Number(ui.chordToneGravity.value) / 10;
   const diatonicStrictness = Number(ui.diatonicStrictness.value) / 10;
+  const sectionTempoMotion = ui.sectionTempoMotion.value;
+  const transitionFillAmount = ui.transitionFillAmount.value;
+  const modulationPlan = ui.modulationPlan.value;
+  const counterMelodyMode = ui.counterMelody.value;
+  const accompanimentStyle = ui.accompanimentStyle.value;
+  const chordActivity = Number(ui.chordActivity.value) / 10;
+  const inversionMobility = Number(ui.inversionMobility.value) / 10;
+  const innerVoiceActivity = Number(ui.innerVoiceActivity.value) / 10;
+  const suspensionRate = Number(ui.suspensionRate.value) / 10;
+  const cadenceStrength = Number(ui.cadenceStrength.value) / 10;
 
   const scaleName = getScaleName();
   const rootMidi = getRootMidi();
   const profiles = getSectionProfiles();
+  const sectionTempoMap = buildSectionTempoMap(sectionTempoMotion, profiles);
+  const harmonyPlan = getSectionHarmonyPlan(scaleName, rootMidi, modulationPlan);
+  const sectionHarmony = harmonyPlan.sectionHarmony;
 
   const progressionSet = getInstrumentalProgressions(cadenceTension);
   const baseIndex = Math.floor(Math.random() * progressionSet.length);
@@ -2054,8 +2716,8 @@ function generatePattern() {
       sectionName: "verse",
       progression: verseProgression,
       sectionProfile: profiles.verse,
-      rootMidi,
-      scaleName,
+      rootMidi: sectionHarmony.verse.rootMidi,
+      scaleName: sectionHarmony.verse.scaleName,
       complexity,
       energy,
       variation,
@@ -2067,13 +2729,21 @@ function generatePattern() {
       rhythmDensity,
       chordToneGravity,
       diatonicStrictness,
+      transitionFillAmount,
+      counterMelodyMode,
+      accompanimentStyle,
+      chordActivity,
+      inversionMobility,
+      innerVoiceActivity,
+      suspensionRate,
+      cadenceStrength,
     }),
     chorus: createSectionPattern({
       sectionName: "chorus",
       progression: chorusProgression,
       sectionProfile: profiles.chorus,
-      rootMidi,
-      scaleName,
+      rootMidi: sectionHarmony.chorus.rootMidi,
+      scaleName: sectionHarmony.chorus.scaleName,
       complexity,
       energy,
       variation,
@@ -2085,13 +2755,21 @@ function generatePattern() {
       rhythmDensity,
       chordToneGravity,
       diatonicStrictness,
+      transitionFillAmount,
+      counterMelodyMode,
+      accompanimentStyle,
+      chordActivity,
+      inversionMobility,
+      innerVoiceActivity,
+      suspensionRate,
+      cadenceStrength,
     }),
     bridge: createSectionPattern({
       sectionName: "bridge",
       progression: bridgeProgression,
       sectionProfile: profiles.bridge,
-      rootMidi,
-      scaleName,
+      rootMidi: sectionHarmony.bridge.rootMidi,
+      scaleName: sectionHarmony.bridge.scaleName,
       complexity,
       energy,
       variation,
@@ -2103,35 +2781,75 @@ function generatePattern() {
       rhythmDensity,
       chordToneGravity,
       diatonicStrictness,
+      transitionFillAmount,
+      counterMelodyMode,
+      accompanimentStyle,
+      chordActivity,
+      inversionMobility,
+      innerVoiceActivity,
+      suspensionRate,
+      cadenceStrength,
     }),
   };
+
+  const verseHarmonyLabel = getHarmonySignature(sectionHarmony.verse.scaleName, sectionHarmony.verse.rootMidi);
+  const chorusHarmonyLabel = getHarmonySignature(sectionHarmony.chorus.scaleName, sectionHarmony.chorus.rootMidi);
+  const bridgeHarmonyLabel = getHarmonySignature(sectionHarmony.bridge.scaleName, sectionHarmony.bridge.rootMidi);
 
   state.pattern = {
     scaleName,
     rootMidi,
+    sectionHarmony,
+    sectionTempoMap,
+    modulationPlan: harmonyPlan.mode,
+    modulationLabel: harmonyPlan.label,
+    transitionFillAmount,
+    counterMelodyMode,
+    accompanimentStyle,
+    chordActivity,
+    inversionMobility,
+    innerVoiceActivity,
+    suspensionRate,
+    cadenceStrength,
     sections,
     progressionText: {
       verse: {
         roman: progressionToRomanText(sections.verse.progression),
-        chords: progressionToChordText(sections.verse.progression, scaleName, rootMidi),
+        chords: progressionToChordText(
+          sections.verse.progression,
+          sectionHarmony.verse.scaleName,
+          sectionHarmony.verse.rootMidi
+        ),
       },
       chorus: {
         roman: progressionToRomanText(sections.chorus.progression),
-        chords: progressionToChordText(sections.chorus.progression, scaleName, rootMidi),
+        chords: progressionToChordText(
+          sections.chorus.progression,
+          sectionHarmony.chorus.scaleName,
+          sectionHarmony.chorus.rootMidi
+        ),
       },
       bridge: {
         roman: progressionToRomanText(sections.bridge.progression),
-        chords: progressionToChordText(sections.bridge.progression, scaleName, rootMidi),
+        chords: progressionToChordText(
+          sections.bridge.progression,
+          sectionHarmony.bridge.scaleName,
+          sectionHarmony.bridge.rootMidi
+        ),
       },
     },
-    label: `${preset.label} • ${scaleName} • Key ${getKeyName()}`,
+    label: `${preset.label} • ${scaleName} • Key ${getKeyName()} • ${sectionTempoMap.label} • ${
+      accompanimentStyle.charAt(0).toUpperCase() + accompanimentStyle.slice(1)
+    } Accompaniment${
+      harmonyPlan.mode === "none" ? "" : ` • ${harmonyPlan.label}`
+    }`,
   };
 
   ui.nowPlaying.textContent = state.pattern.label;
   ui.theoryProgressionsRoman.textContent =
-    `Verse: ${state.pattern.progressionText.verse.roman} | Chorus: ${state.pattern.progressionText.chorus.roman} | Bridge: ${state.pattern.progressionText.bridge.roman}`;
+    `Verse [${verseHarmonyLabel}]: ${state.pattern.progressionText.verse.roman} | Chorus [${chorusHarmonyLabel}]: ${state.pattern.progressionText.chorus.roman} | Bridge [${bridgeHarmonyLabel}]: ${state.pattern.progressionText.bridge.roman}`;
   ui.theoryProgressionsChords.textContent =
-    `Verse: ${state.pattern.progressionText.verse.chords} | Chorus: ${state.pattern.progressionText.chorus.chords} | Bridge: ${state.pattern.progressionText.bridge.chords}`;
+    `Verse [${verseHarmonyLabel}]: ${state.pattern.progressionText.verse.chords} | Chorus [${chorusHarmonyLabel}]: ${state.pattern.progressionText.chorus.chords} | Bridge [${bridgeHarmonyLabel}]: ${state.pattern.progressionText.bridge.chords}`;
   ui.currentSection.textContent = "verse";
   ui.currentChord.textContent = "-";
   state.sectionName = "verse";
@@ -2139,8 +2857,7 @@ function generatePattern() {
 }
 
 function getActiveSectionName() {
-  const sectionIndex = Math.floor(transport.stepCounter / TOTAL_STEPS) % SECTION_ORDER.length;
-  return SECTION_ORDER[sectionIndex];
+  return getSectionNameByIndex(getSectionIndexAtStepCounter(transport.stepCounter));
 }
 
 function updateTheoryReadout(sectionName, stepInSection) {
@@ -2149,13 +2866,18 @@ function updateTheoryReadout(sectionName, stepInSection) {
   }
 
   const sectionPattern = state.pattern.sections[sectionName];
+  const harmony = state.pattern.sectionHarmony?.[sectionName] || {
+    scaleName: state.pattern.scaleName,
+    rootMidi: state.pattern.rootMidi,
+  };
   const degree = sectionPattern.chordDegreeByStep[stepInSection];
-  const chordName = degreeToChordName(state.pattern.scaleName, state.pattern.rootMidi, degree);
+  const chordName = degreeToChordName(harmony.scaleName, harmony.rootMidi, degree);
+  const harmonyLabel = getHarmonySignature(harmony.scaleName, harmony.rootMidi);
   ui.currentSection.textContent = sectionName;
-  ui.currentChord.textContent = `${degreeToRoman(degree)} = ${chordName} (${degreeFunction(degree)})`;
+  ui.currentChord.textContent = `${degreeToRoman(degree)} = ${chordName} (${degreeFunction(degree)}) • ${harmonyLabel}`;
 }
 
-function scheduleStep(step, time) {
+function scheduleStep(step, time, stepDuration) {
   if (!state.pattern) {
     return;
   }
@@ -2177,7 +2899,7 @@ function scheduleStep(step, time) {
   const variation = Number(ui.variation.value) / 10;
   const humanization = Number(ui.humanization.value) / 10;
   const curveFactor = getEnergyCurveFactor(transport.stepCounter);
-  const stepDuration = getStepDurationSeconds();
+  const effectiveStepDuration = stepDuration || getStepDurationSeconds();
   const sectionEnergyFactor = 0.85 + sectionPattern.sectionEnergy * 0.35;
 
   const jitterRange = 0.012 * (0.45 + humanization * 0.8) + variation * 0.002;
@@ -2250,7 +2972,7 @@ function scheduleStep(step, time) {
     playInstrumentBass(
       jitteredTime(),
       bassNote.midi,
-      stepDuration * bassNote.durationSteps,
+      effectiveStepDuration * bassNote.durationSteps,
       bassLevel
     );
     noteElementLevel("bass", bassLevel);
@@ -2263,10 +2985,22 @@ function scheduleStep(step, time) {
     playInstrumentLead(
       jitteredTime(),
       melodyNote.midi,
-      stepDuration * melodyNote.durationSteps * 1.08,
+      effectiveStepDuration * melodyNote.durationSteps * 1.08,
       melodyLevel
     );
     noteElementLevel("melody", melodyLevel);
+  }
+
+  const counterNote = sectionPattern.counterMelody?.[step];
+  if (counterNote && !state.mutes.melody) {
+    const counterLevel = counterNote.velocity * sectionEnergyFactor * 0.76;
+    playInstrumentLead(
+      jitteredTime(6),
+      counterNote.midi,
+      effectiveStepDuration * counterNote.durationSteps * 0.96,
+      counterLevel
+    );
+    noteElementLevel("melody", counterLevel);
   }
 
   const padChord = sectionPattern.pad[step];
@@ -2275,7 +3009,7 @@ function scheduleStep(step, time) {
     playInstrumentChord(
       jitteredTime(),
       padChord.chord,
-      stepDuration * padChord.durationSteps,
+      effectiveStepDuration * padChord.durationSteps,
       padLevel
     );
     noteElementLevel("pad", padLevel);
@@ -2288,9 +3022,10 @@ function scheduler() {
   }
 
   while (transport.nextStepTime < state.audioCtx.currentTime + transport.scheduleAheadSec) {
-    scheduleStep(transport.currentStep, transport.nextStepTime);
+    const tempoMultiplier = getSectionTempoMultiplier(transport.stepCounter, transport.currentStep);
+    const baseStep = getStepDurationSeconds() / Math.max(0.72, tempoMultiplier);
+    scheduleStep(transport.currentStep, transport.nextStepTime, baseStep);
 
-    const baseStep = getStepDurationSeconds();
     const swing = clamp(Number(ui.swing.value) / 100, 0, 0.45);
     const swingOffset = baseStep * swing * 0.5;
     const stepDelta = baseStep + (transport.currentStep % 2 === 0 ? -swingOffset : swingOffset);
@@ -2370,6 +3105,16 @@ function applyDefaults() {
   ui.voiceLeading.value = "8";
   ui.chordToneGravity.value = "7";
   ui.diatonicStrictness.value = "8";
+  ui.sectionTempoMotion.value = "gentle";
+  ui.transitionFillAmount.value = "light";
+  ui.modulationPlan.value = "none";
+  ui.counterMelody.value = "sparse";
+  ui.chordActivity.value = "6";
+  ui.accompanimentStyle.value = "broken";
+  ui.inversionMobility.value = "7";
+  ui.innerVoiceActivity.value = "6";
+  ui.suspensionRate.value = "4";
+  ui.cadenceStrength.value = "6";
 
   ui.verseMelodyLevel.value = "5";
   ui.chorusMelodyLevel.value = "8";
@@ -2488,6 +3233,11 @@ function bindControls() {
     ui.voiceLeading,
     ui.chordToneGravity,
     ui.diatonicStrictness,
+    ui.chordActivity,
+    ui.inversionMobility,
+    ui.innerVoiceActivity,
+    ui.suspensionRate,
+    ui.cadenceStrength,
     ui.verseMelodyLevel,
     ui.chorusMelodyLevel,
     ui.bridgeMelodyLevel,
@@ -2552,6 +3302,16 @@ function bindControls() {
     ui.voiceLeading,
     ui.chordToneGravity,
     ui.diatonicStrictness,
+    ui.sectionTempoMotion,
+    ui.transitionFillAmount,
+    ui.modulationPlan,
+    ui.counterMelody,
+    ui.accompanimentStyle,
+    ui.chordActivity,
+    ui.inversionMobility,
+    ui.innerVoiceActivity,
+    ui.suspensionRate,
+    ui.cadenceStrength,
     ui.tempo,
     ui.energy,
     ui.complexity,

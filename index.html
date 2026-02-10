@@ -39,26 +39,6 @@
           <div class="status-pill" id="status-pill">stopped</div>
         </header>
 
-        <div class="controls-grid primary-controls">
-          <label class="control">
-            <span>Key</span>
-            <select id="key">
-              <option value="0">C</option>
-              <option value="1">C# / Db</option>
-              <option value="2">D</option>
-              <option value="3">D# / Eb</option>
-              <option value="4">E</option>
-              <option value="5">F</option>
-              <option value="6">F# / Gb</option>
-              <option value="7">G</option>
-              <option value="8">G# / Ab</option>
-              <option value="9">A</option>
-              <option value="10">A# / Bb</option>
-              <option value="11">B</option>
-            </select>
-          </label>
-        </div>
-
         <p class="eyebrow control-title">Core Sound</p>
 
         <div class="controls-grid">
@@ -125,6 +105,24 @@
 
         <div class="controls-grid">
           <label class="control">
+            <span>Key</span>
+            <select id="key">
+              <option value="0">C</option>
+              <option value="1">C# / Db</option>
+              <option value="2">D</option>
+              <option value="3">D# / Eb</option>
+              <option value="4">E</option>
+              <option value="5">F</option>
+              <option value="6">F# / Gb</option>
+              <option value="7">G</option>
+              <option value="8">G# / Ab</option>
+              <option value="9">A</option>
+              <option value="10">A# / Bb</option>
+              <option value="11">B</option>
+            </select>
+          </label>
+
+          <label class="control">
             <span>Scale Mode</span>
             <select id="scale-mode">
               <option value="auto">Auto (Major)</option>
@@ -190,6 +188,86 @@
             <span>Diatonic Strictness</span>
             <input id="diatonic-strictness" type="range" min="1" max="10" value="8" />
             <output id="diatonic-strictness-value">8</output>
+          </label>
+
+          <label class="control">
+            <span>Section Tempo Motion</span>
+            <select id="section-tempo-motion">
+              <option value="locked">Locked</option>
+              <option value="gentle" selected>Gentle</option>
+              <option value="expressive">Expressive</option>
+            </select>
+          </label>
+
+          <label class="control">
+            <span>Transition Fill Amount</span>
+            <select id="transition-fill-amount">
+              <option value="off">Off</option>
+              <option value="light" selected>Light</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+
+          <label class="control">
+            <span>Modulation Plan</span>
+            <select id="modulation-plan">
+              <option value="none" selected>None</option>
+              <option value="relative-bridge">Relative Key (Bridge)</option>
+              <option value="dominant-pull">Dominant Pull (Bridge)</option>
+              <option value="modal-color">Modal Color (Bridge)</option>
+            </select>
+          </label>
+
+          <label class="control">
+            <span>Counter Melody</span>
+            <select id="counter-melody">
+              <option value="off">Off</option>
+              <option value="sparse" selected>Sparse</option>
+              <option value="conversational">Conversational</option>
+              <option value="active">Active</option>
+            </select>
+          </label>
+
+          <label class="control">
+            <span>Chord Activity</span>
+            <input id="chord-activity" type="range" min="1" max="10" value="6" />
+            <output id="chord-activity-value">6</output>
+          </label>
+
+          <label class="control">
+            <span>Accompaniment Style</span>
+            <select id="accompaniment-style">
+              <option value="chorale">Chorale</option>
+              <option value="broken" selected>Broken Chord</option>
+              <option value="arpeggio">Arpeggio</option>
+              <option value="pulse">Pulse</option>
+              <option value="tremolo">Tremolo Strings</option>
+            </select>
+          </label>
+
+          <label class="control">
+            <span>Inversion Mobility</span>
+            <input id="inversion-mobility" type="range" min="1" max="10" value="7" />
+            <output id="inversion-mobility-value">7</output>
+          </label>
+
+          <label class="control">
+            <span>Inner Voice Activity</span>
+            <input id="inner-voice-activity" type="range" min="1" max="10" value="6" />
+            <output id="inner-voice-activity-value">6</output>
+          </label>
+
+          <label class="control">
+            <span>Suspension Rate</span>
+            <input id="suspension-rate" type="range" min="1" max="10" value="4" />
+            <output id="suspension-rate-value">4</output>
+          </label>
+
+          <label class="control">
+            <span>Cadence Strength</span>
+            <input id="cadence-strength" type="range" min="1" max="10" value="6" />
+            <output id="cadence-strength-value">6</output>
           </label>
 
           <div class="control theory-random-control">
