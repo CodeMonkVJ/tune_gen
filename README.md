@@ -1,4 +1,4 @@
-# tune_gen
+# [tune_gen](https://tunegen.codemonkapps.me)
 
 Instrument-first generative music playground for learning practical music theory in real time.
 
